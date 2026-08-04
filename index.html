@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Prometheus Desk</title>
+<style>
+  :root {
+    --bg: #17140f; --surface: #211c15; --surface-2: #2a2419; --border: #3d3527;
+    --text: #ede6d8; --text-dim: #a99c87; --text-faint: #756a58;
+    --accent: #d68a3c; --accent-dim: #8a5a28; --accent-glow: rgba(214, 138, 60, 0.18);
+    --profit: #7db98c; --loss: #cf6e5c; --neutral-sig: #8b93a8;
+    --font-display: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --font-body: "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", "Cascadia Code", "SF Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f2ede2; --surface:#fbf8f1; --surface-2:#eee7d8; --border:#d8cdb4;
+      --text:#241f16; --text-dim:#6b5f4a; --text-faint:#948763; --accent:#b06a1f;
+      --accent-dim:#d9a866; --accent-glow: rgba(176,106,31,0.12); --profit:#3f7a52; --loss:#a8402f; --neutral-sig:#5c6478; }
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); margin: 0; padding: 28px; min-height: 100vh; }
+  .wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  .masthead { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+  .masthead h1 { font-family: var(--font-display); font-weight: 400; font-size: 1.9rem; margin: 0; }
+  .masthead h1 em { font-style: normal; color: var(--accent); }
+  .masthead .tag { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-faint); letter-spacing: 0.06em; text-transform: uppercase; }
+  .live-pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--profit); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--profit); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  .live-dot.stale { background: var(--loss); animation: none; }
+  .live-pill.stale { color: var(--loss); }
+  .vitals { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .vital { background: var(--surface); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .vital .label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); }
+  .vital .value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 1.3rem; }
+  .vital .value.pos { color: var(--profit); } .vital .value.neg { color: var(--loss); }
+  .grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+  .card h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.05rem; margin: 0 0 4px 0; }
+  .card .card-sub { font-size: 0.76rem; color: var(--text-faint); margin: 0 0 14px 0; }
+  .rank-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-glow); border: 1px solid var(--accent-dim); color: var(--accent); padding: 2px 10px 2px 8px; border-radius: 999px; font-family: var(--font-mono); font-size: 0.72rem; }
+  .chip { display: inline-block; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 5px; text-transform: uppercase; }
+  .chip.buy { background: rgba(125,185,140,.16); color: var(--profit); }
+  .chip.sell { background: rgba(207,110,92,.16); color: var(--loss); }
+  .chip.flat { background: rgba(139,147,168,.16); color: var(--neutral-sig); }
+  .chip.close { background: var(--accent-glow); color: var(--accent); }
+  .feed-item { display: grid; grid-template-columns: 78px 44px 1fr; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .feed-item:last-child { border-bottom: none; }
+  .feed-item .sym { font-family: var(--font-mono); font-weight: 600; }
+  .feed-item .conf { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 0.78rem; }
+  .feed-item .reason { color: var(--text-dim); line-height: 1.4; }
+  .feed-source { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 0 6px 0; display: flex; justify-content: space-between; }
+  .summary-line { font-size: 0.86rem; color: var(--text-dim); line-height: 1.5; padding: 10px 12px; background: var(--surface-2); border-left: 2px solid var(--accent-dim); border-radius: 0 6px 6px 0; margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 500; padding: 0 8px 8px 0; border-bottom: 1px solid var(--border); }
+  td { padding: 7px 8px 7px 0; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  .table-wrap { overflow-x: auto; }
+  .progress-track { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin: 10px 0 6px 0; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); border-radius: 999px; }
+  .progress-labels { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-faint); }
+  .stat-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .stat-val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .stat-val.pos { color: var(--profit); } .stat-val.neg { color: var(--loss); }
+  .footer-note { font-size: 0.72rem; color: var(--text-faint); text-align: center; font-family: var(--font-mono); padding-top: 6px; }
+  .empty { color: var(--text-faint); font-size: 0.82rem; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="masthead">
+    <div>
+      <h1>Promethe<em>us</em> Desk</h1>
+      <div class="tag">Royal Zeus EA — Demo — Live Feed</div>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+      <span class="rank-badge" id="rankBadge">🔥 —</span>
+      <span class="live-pill"><span class="live-dot" id="liveDot"></span><span id="liveText">connecting…</span></span>
+    </div>
+  </div>
+
+  <div class="vitals" id="vitals"></div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>What it's watching right now</h2>
+      <p class="card-sub">Main sweep every 10 min (all symbols, w/ chart), gold fast-loop every 2 min (text-only).</p>
+      <div id="mainFeed"></div>
+      <div id="summaryBox"></div>
+      <div class="feed-source"><span>Gold fast-loop</span><span>latest</span></div>
+      <div id="goldFeed"></div>
+      <div class="table-wrap" style="margin-top:18px"><table id="positionsTable"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Proving Ground</h2>
+      <p class="card-sub">Every BUY/SELL opens as a paper trade first. Real money only follows a proven record.</p>
+      <div class="progress-labels" id="progressLabels"></div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div id="rankStats"></div>
+      <div class="table-wrap" style="margin-top:14px"><table id="trialsTable"></table></div>
+    </div>
+  </div>
+
+  <div class="footer-note" id="footerNote">Demo account. Illustrative only — not financial advice, not a performance guarantee.</div>
+</div>
+
+<script>
+// ---- data source: the JSON blob the local publisher pushes to this repo ----
+// raw.githubusercontent serves it with CORS "*"; the ?t= cachebuster dodges its CDN cache.
+const DATA_URL = "https://raw.githubusercontent.com/mrjoeukman/zeus-desk-twu5y4qg/main/status.json";
+const POLL_MS = 20000;
+const STALE_AFTER_MS = 6 * 60 * 1000; // no fresh snapshot in 6 min -> show stale (MT4 or publisher likely down)
+
+const $ = id => document.getElementById(id);
+const esc = s => (s ?? "").toString().replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+const fmtMoney = (v) => v === null ? "—" : (v >= 0 ? "+" : "") + "£" + Math.abs(v).toFixed(2);
+const sideClass = a => ({BUY:"buy", SELL:"sell", FLAT:"flat", CLOSE:"close"}[(a||"").toUpperCase()] || "flat");
+
+function renderVitals(acc) {
+  const eq = num(acc.equity), bal = num(acc.balance), day = num(acc.dailyPnL), flt = num(acc.floatingPnL);
+  $("vitals").innerHTML = `
+    <div class="vital"><span class="label">Equity</span><span class="value">${eq!==null ? "£"+eq.toFixed(2) : "—"}</span></div>
+    <div class="vital"><span class="label">Balance</span><span class="value">${bal!==null ? "£"+bal.toFixed(2) : "—"}</span></div>
+    <div class="vital"><span class="label">Day P/L</span><span class="value ${day>=0?'pos':'neg'}">${fmtMoney(day)}</span></div>
+    <div class="vital"><span class="label">Floating</span><span class="value ${flt>=0?'pos':'neg'}">${fmtMoney(flt)}</span></div>
+    <div class="vital"><span class="label">Session</span><span class="value" style="font-size:1.05rem">${esc(acc.session || "—")}</span></div>
+  `;
+}
+
+function renderDirectives(elId, list) {
+  const el = $(elId);
+  if (!list || !list.length) { el.innerHTML = '<div class="empty">No directives parsed yet.</div>'; return; }
+  el.innerHTML = list.map(d => `
+    <div class="feed-item">
+      <span class="sym">${esc(d.symbol)}</span>
+      <span class="chip ${sideClass(d.action)}">${esc(d.action)}</span>
+      <span class="reason"><span class="conf">${esc(d.confidence)}%</span> — ${esc(d.reason)}</span>
+    </div>`).join("");
+}
+
+function renderPositions(symbols) {
+  const rows = (symbols || []).filter(s => s.openPosition);
+  const tbl = $("positionsTable");
+  if (!rows.length) { tbl.innerHTML = '<tr><td class="empty" style="border:none">No open positions.</td></tr>'; return; }
+  tbl.innerHTML = `<tr><th>Position</th><th>P/L</th></tr>` + rows.map(s => {
+    const parts = s.openPosition.split(" ");
+    const side = parts[0], lots = parts[1];
+    const pnlMatch = s.openPosition.match(/pnl=(-?[\d.]+)/);
+    const pnl = pnlMatch ? parseFloat(pnlMatch[1]) : null;
+    return `<tr><td>${esc(s.symbol)} <span class="chip ${sideClass(side)}">${esc(side)}</span> ${esc(lots)}</td><td style="color:var(--${pnl>=0?'profit':'loss'})">${fmtMoney(pnl)}</td></tr>`;
+  }).join("");
+}
+
+function renderTrials(trials) {
+  const tbl = $("trialsTable");
+  if (!trials || !trials.length) { tbl.innerHTML = '<tr><td class="empty" style="border:none">No trials resolved yet.</td></tr>'; return; }
+  tbl.innerHTML = `<tr><th>Symbol</th><th>Call</th><th>Result</th><th>Dur</th></tr>` +
+    trials.slice(-8).reverse().map(t => {
+      const pips = parseFloat(t.Pips || 0);
+      return `<tr><td>${esc(t.Symbol)}</td><td><span class="chip ${sideClass(t.Dir)}">${esc(t.Dir)}</span></td>
+        <td style="color:var(--${pips>0?'profit':'loss'})">${pips>0?'+':''}${pips.toFixed(0)} pips</td>
+        <td>${esc(t.DurMin)}m</td></tr>`;
+    }).join("");
+}
+
+function markStale(msg) {
+  $("liveDot").classList.add("stale");
+  document.querySelector(".live-pill").classList.add("stale");
+  $("liveText").textContent = msg;
+}
+
+async function tick() {
+  try {
+    const res = await fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const s = await res.json();
+    renderVitals(s.account || {});
+    renderDirectives("mainFeed", s.directives);
+    renderDirectives("goldFeed", s.gold);
+    renderPositions(s.symbols);
+    renderTrials(s.trials);
+
+    $("summaryBox").innerHTML = s.summary ? `<div class="summary-line">"${esc(s.summary)}"</div>` : "";
+
+    const total = (s.trialWins || 0) + (s.trialLosses || 0);
+    const rankRaw = (s.account && s.account.track_record_raw) || "";
+    const rankMatch = rankRaw.match(/rank=(\w+)/);
+    $("rankBadge").textContent = "🔥 " + (rankMatch ? rankMatch[1].toUpperCase() : "—");
+    $("progressLabels").innerHTML = `<span>${total} resolved trials</span><span>20 needed for Councilor</span>`;
+    $("progressFill").style.width = Math.min(100, (total/20)*100) + "%";
+    const winRate = total > 0 ? ((s.trialWins/total)*100).toFixed(0) : "0";
+    $("rankStats").innerHTML = `
+      <div class="stat-row"><span>Record</span><span class="stat-val">${s.trialWins||0} W — ${s.trialLosses||0} L</span></div>
+      <div class="stat-row"><span>Win rate</span><span class="stat-val ${winRate>=55?'pos':'neg'}">${winRate}% <span style="color:var(--text-faint)">(needs 55%)</span></span></div>
+      <div class="stat-row"><span>Net virtual pips</span><span class="stat-val ${s.netPips>=0?'pos':'neg'}">${(s.netPips||0).toFixed(0)}</span></div>
+    `;
+
+    // freshness: generatedAt is the LOCAL machine's snapshot time (server tz).
+    const gen = s.generatedAt ? Date.parse(s.generatedAt.replace(" ", "T")) : NaN;
+    const ageMs = isNaN(gen) ? Infinity : (Date.now() - gen);
+    if (ageMs > STALE_AFTER_MS) {
+      markStale("stale — last snapshot " + (s.generatedAt || "?") + " (MT4/publisher may be down)");
+    } else {
+      $("liveDot").classList.remove("stale");
+      document.querySelector(".live-pill").classList.remove("stale");
+      $("liveText").textContent = "live — snapshot " + (s.generatedAt || "");
+    }
+  } catch (e) {
+    markStale("feed unreachable, retrying…");
+  }
+}
+tick();
+setInterval(tick, POLL_MS);
+</script>
+</body>
+</html>
