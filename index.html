@@ -202,15 +202,17 @@ async function tick() {
       <div class="stat-row"><span>Net virtual pips</span><span class="stat-val ${s.netPips>=0?'pos':'neg'}">${(s.netPips||0).toFixed(0)}</span></div>
     `;
 
-    // freshness: generatedAt is the LOCAL machine's snapshot time (server tz).
-    const gen = s.generatedAt ? Date.parse(s.generatedAt.replace(" ", "T")) : NaN;
-    const ageMs = isNaN(gen) ? Infinity : (Date.now() - gen);
-    if (ageMs > STALE_AFTER_MS) {
-      markStale("stale — last snapshot " + (s.generatedAt || "?") + " (MT4/publisher may be down)");
+    // freshness: dataAgeSec is how long since the last real consult (bridge transcript
+    // mtime) — a true "is MT4 still working" signal. generatedAt only tells us the
+    // publisher ran; it advances even if MT4 is down, so we do NOT key staleness off it.
+    const ageSec = (typeof s.dataAgeSec === "number") ? s.dataAgeSec : Infinity;
+    if (ageSec > STALE_AFTER_MS / 1000) {
+      const mins = isFinite(ageSec) ? Math.round(ageSec / 60) + " min" : "unknown";
+      markStale("stale — no consult in " + mins + " (MT4 may be stopped)");
     } else {
       $("liveDot").classList.remove("stale");
       document.querySelector(".live-pill").classList.remove("stale");
-      $("liveText").textContent = "live — snapshot " + (s.generatedAt || "");
+      $("liveText").textContent = "live — last consult " + Math.max(0, ageSec) + "s ago";
     }
   } catch (e) {
     markStale("feed unreachable, retrying…");
